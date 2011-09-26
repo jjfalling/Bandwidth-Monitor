@@ -1,0 +1,6 @@
+Usage.sh README
+
+usage.sh is an interactive script that polls a device interface and reports the in/out octets.
+It will stop after 60 seconds and ask you if you want to continue.
+
+By default, the script will use the community public.
