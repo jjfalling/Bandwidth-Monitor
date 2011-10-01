@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 
-#######################################################
+#############################################################################
 # usage.sh
+# This script gets and displays the bandwidth usage for a given interface on 
+# a device. You must have snmpget/netsnmp installed
+#############################################################################
+#
 #
 # ***************************************************************************
 # *   Copyright (C) 2011 by Jeremy Falling except where noted.              *
@@ -23,12 +27,17 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 # *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 # ***************************************************************************
 
-#This script gets and displays the bandwidth usage for a given interface on a device. You must have snmpget/netsnmp installed
 
-#V1.0 first attempt
-#V1.1 fixed the math so this spits out kbits not kbytes. also changed runtime from 15 to 60 seconds
+# CHANGELOG
+#
+# V1.0 
+#		*first attempt
+# V1.1 
+#		*fixed the math so this spits out kbits not kbytes. also changed 
+#		 runtime from 15 to 60 seconds
 
-#######################################################
+#############################################################################
+
 
 echo ""
 echo "This program gets the usage from a devices port using SNMP."
@@ -48,26 +57,28 @@ read -e DEFAULTCOMUNITY
 
 while [ concount != 1 ]
 do
-    if [[ $DEFAULTCOMUNITY == "yes" ]]
-    then
-      snmpcomunity="public"
-      concount="1"
-      break
+	if [[ $DEFAULTCOMUNITY == "yes" ]]
+	then
 
-    elif [[ $DEFAULTCOMUNITY == "no" ]]
-    then
+		snmpcomunity="public"  #The default snmp comunity is set to the standard public. You may want to change this.
+		concount="1"
+		break
 
-      echo ""
-      echo ""
-      echo -n "Enter snmp comunity: "
-      read -e snmpcomunity
-      break
+	elif [[ $DEFAULTCOMUNITY == "no" ]]
+	then
 
-    else
-      echo "Please type yes or no"
-      read -e DEFAULTCOMUNITY
+		echo ""
+		echo ""
+		echo -n "Enter snmp comunity: "
+		read -e snmpcomunity
+		break
 
-    fi
+	else
+
+		echo "Please type yes or no"
+		read -e DEFAULTCOMUNITY
+
+	fi
 done
 
 #confirm selections
@@ -80,75 +91,82 @@ echo "Comunity: " $snmpcomunity
 #start polling and displaying data for 60 seconds
 
 mainexit=0
+
 while [ mainexit != "1" ]
 do
 
-#get inital value
-inoct1=`snmpget -v1 -c "$snmpcomunity" "$HOST" interfaces.ifTable.ifEntry.ifInOctets."$INTERFACE" |sed 's/IF-MIB::ifInOctets.* = Counter32: //'`
-outoct1=`snmpget -v1 -c "$snmpcomunity" "$HOST" interfaces.ifTable.ifEntry.ifOutOctets."$INTERFACE" |sed 's/IF-MIB::ifOutOctets.* = Counter32: //'`
+	#get initial value
+	inoct1=`snmpget -v1 -c "$snmpcomunity" "$HOST" interfaces.ifTable.ifEntry.ifInOctets."$INTERFACE" |sed 's/IF-MIB::ifInOctets.* = Counter32: //'`
+	outoct1=`snmpget -v1 -c "$snmpcomunity" "$HOST" interfaces.ifTable.ifEntry.ifOutOctets."$INTERFACE" |sed 's/IF-MIB::ifOutOctets.* = Counter32: //'`
 
-sleep 1
+	sleep 1
 
-echo ""
-echo ""
-echo "In Octets  |Out Octets  |Kb/s in  |Kb/s out"
-echo "-------------------------------------------------------------------"
-  i="0"
-  while [ $i -lt 60 ]
-  do
+	echo ""
+	echo ""
+	echo "In Octets  |Out Octets  |Kb/s in  |Kb/s out"
+	echo "-------------------------------------------------------------------"
+	i="0"
+
+	while [ $i -lt 60 ]
+	do
     
-    #get value
-    inoct2=`snmpget -v1 -c "$snmpcomunity" "$HOST" interfaces.ifTable.ifEntry.ifInOctets."$INTERFACE" |sed 's/IF-MIB::ifInOctets.* = Counter32: //'`
-    outoct2=`snmpget -v1 -c "$snmpcomunity" "$HOST" interfaces.ifTable.ifEntry.ifOutOctets."$INTERFACE" |sed 's/IF-MIB::ifOutOctets.* = Counter32: //'`
+		#get value
+		inoct2=`snmpget -v1 -c "$snmpcomunity" "$HOST" interfaces.ifTable.ifEntry.ifInOctets."$INTERFACE" |sed 's/IF-MIB::ifInOctets.* = Counter32: //'`
+		outoct2=`snmpget -v1 -c "$snmpcomunity" "$HOST" interfaces.ifTable.ifEntry.ifOutOctets."$INTERFACE" |sed 's/IF-MIB::ifOutOctets.* = Counter32: //'`
     
     
-    #initial minus current to use for bandwidth calc
-    let inoct_diff=$inoct2-$inoct1
-    let outoct_diff=$outoct2-$outoct1
+		#initial minus current to use for bandwidth calc
+		let inoct_diff=$inoct2-$inoct1
+		let outoct_diff=$outoct2-$outoct1
     
-    #turn octets into bits then turn into kbits
-    let inusage=$inoct_diff*8/1024
-    let outusage=$outoct_diff*8/1024
+		#turn octets into bits then turn into kbits
+		let inusage=$inoct_diff*8/1024
+		let outusage=$outoct_diff*8/1024
     
-    echo "$inoct2  |$outoct2  |$inusage  |$outusage" 
+		echo "$inoct2  |$outoct2  |$inusage  |$outusage" 
     
-    inoct1=$inoct2
-    outoct1=$outoct2
-    sleep 1
-    i=$[$i+1]
+		inoct1=$inoct2
+		outoct1=$outoct2
+		sleep 1
+		i=$[$i+1]
     
-  done
+	done
+	
   
-  echo ""
-  echo ""
-  echo "Do you want more data?  [yes/no]"
-  read -e MAINCONTINUE
+	echo ""
+	echo ""
+	echo "Do you want more data?  [yes/no]"
+	read -e MAINCONTINUE
+	
 
-  while [ concount2 != 1 ]
-  do
-    if [[ $MAINCONTINUE == "yes" ]]
-    then
-      concount2=1
-      break
+	while [ concount2 != 1 ]
+	do
 
-    elif [[ $MAINCONTINUE == "no" ]]
-    then
+		if [[ $MAINCONTINUE == "yes" ]]
+		then
 
-      echo ""
-      echo ""
-      echo "User wishes to exit..."
-      concount2="1"
-      mainexit="1"
-      exit 1
+			concount2=1
+			break
 
-    else
-      echo "Please type yes or no"
-      read -e MAINCONTINUE
+	elif [[ $MAINCONTINUE == "no" ]]
+	then
 
-    fi
-  done
+		echo ""
+		echo ""
+		echo "User wishes to exit..."
+		concount2="1"
+		mainexit="1"
+		exit 1
+
+	else
+
+		echo "Please type yes or no"
+		read -e MAINCONTINUE
+
+	fi
+	done
 
 done
 
 #end of program 
-exit 1
+exit 0
