@@ -6,6 +6,6 @@ will poll the traffic stats (64bit by default, falls back to 32bit).
 
 Run with -h for more options
 
-Also requires:
-Net::SNMP
-Text::TabularDisplay
+Requires:
+* Net::SNMP
+* Text::TabularDisplay
