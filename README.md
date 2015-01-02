@@ -31,7 +31,7 @@ Example of running the script:
 	+---------+-----------+-------+
 	Which interface do you want to monitor (SNMP ID)?
 
-Select an interface and wait and you should see:
+Select an interface, hit return, and wait and you should see:
 
 	+----------+------------+-------------+------------+------------+
 	| Time     | Octets In  | Octects Out | KB/s In    | KB/s Out   |
