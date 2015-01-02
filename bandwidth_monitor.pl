@@ -106,9 +106,9 @@ if ($opt_ifType) {
 
 
 #start new snmp session
-my($snmp,$snmp_error) = Net::SNMP->session(-hostname => $host,
-					   -version  => '2c',
-                                           -community => $opt_rcom);
+my $snmp = Net::SNMP->session(-hostname => $host,
+                              -version  => '2c',
+			      -community => $opt_rcom);
 
 #ensure we could set up the snmp session
 checkSNMPStatus("SNMP Error: ",2);
@@ -268,6 +268,7 @@ sub checkSNMPStatus {
     $human_error = $_[0];
     $exit_request = $_[1];
     
+    my $snmp_error = $snmp->error;
     #check if there was an error, if so, print the requested message and the snmp error. I used the color red to get the user's attention.
     if ($snmp_error) {
 	print "$human_error $snmp_error \n";

@@ -20,18 +20,29 @@ Example of running the script:
 	$ ./bandwidth_monitor.pl -H tardis -c myReadCommunity
 
 	Available interfaces:
-	+---------+-----------+-------+
-	| SNMP ID | INTERFACE | ALIAS |
-	+---------+-----------+-------+
-	| 1       | lo        |       |
-	| 2       | enp7s0    |       |
-	| 3       | enp8s0    |       |
-	| 4       | br0       |       |
-	| 5       | vnet0     |       |
-	+---------+-----------+-------+
+	+---------+----------------+---------------+
+	| SNMP ID | INTERFACE      | ALIAS         |
+	+---------+----------------+---------------+
+	| 507     | vlan.3         |               |
+	| 508     | ge-0/0/0       | wan           |
+	| 509     | ge-0/0/0.0     |               |
+	| 510     | ge-0/0/1       | wifi-router   |
+	| 511     | fe-0/0/2       |               |
+	| 512     | ge-0/0/1.0     |               |
+	| 513     | fe-0/0/3       | backup-wan    |
+	| 514     | fe-0/0/4       |               |
+	| 515     | fe-0/0/2.0     |               |
+	| 516     | fe-0/0/5       |               |
+	| 517     | fe-0/0/3.0     |               |
+	| 518     | fe-0/0/6       |               |
+	| 519     | fe-0/0/7       |               |
+	| 520     | fe-0/0/4.0     |               |
+	| 521     | fe-0/0/5.0     |               |
+	| 525     | ip-0/0/0       | he.net-tunnel |
+	+---------+----------------+---------------+
 	Which interface do you want to monitor (SNMP ID)?
 
-Select an interface, hit return, and wait and you should see:
+Select an interface (example 508), hit return, and wait and you should see:
 
 	+----------+------------+-------------+------------+------------+
 	| Time     | Octets In  | Octects Out | KB/s In    | KB/s Out   |
