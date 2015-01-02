@@ -2,7 +2,7 @@
 
 ###bandwidth_monitor.pl
 
-By default the script will walk the device with the community of
+By default the script will walk a device (specified via -H flag) with the community of
 `public` and generate a table of interfaces for you to pick. Then it
 will poll the traffic stats (64bit by default, falls back to 32bit).
 
