@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+!/usr/bin/env perl
 #****************************************************************************
 #*   SNMP Bandwidth Monitor                                                 *
 #*   Monitor bandwidth on a snmp compatible device in realtime              *
@@ -81,7 +81,7 @@ Optional:
 -p, --port=portid 
    SNMP ID of the port. Skips scanning the device.   
 -c, --community=readcommunity
-   SNMPv2c read community. Defaults to public
+   SNMP read community. Defaults to public
 -t, --ifType=[low|high]
    Type of interface. low is 32bit counter, high is 64bit counter. Defaults to trying 64 and falls back to 32.
 -i, --interval=pollinterval
