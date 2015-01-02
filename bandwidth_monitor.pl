@@ -50,6 +50,7 @@ my %oids = (
 
 my ($opt_ifType, $opt_host, $opt_port, $opt_help, $human_status, $exit_request, $human_error, $requestedInterface);
 my $opt_interval=3;
+my $opt_snmpver='2c';
 
 Getopt::Long::Configure('bundling');
 GetOptions
@@ -58,6 +59,7 @@ GetOptions
      "p=s" => \$opt_port, "port=s" => \$opt_port,
      "t=s" => \$opt_ifType, "iftype=s" => \$opt_ifType,
      "i=s" => \$opt_interval, "interval=s" => \$opt_interval,
+     "v=s" => \$opt_snmpver,  "version=s" => \$opt_snmpver,
      "c=s" => \$opt_rcom, "community=s" => \$opt_rcom);
 
 
@@ -67,7 +69,7 @@ if ($opt_help) {
 
     print "
 SNMP Bandwidth Monitor 
-Usage: $PROGNAME -H host -p port -c community -t interfaceType -i pollinterval
+Usage: $PROGNAME -H host -p port -c community -t interfaceType -i pollinterval -v snmpversion
 
 Required:
 -H, --hostname=HOST
@@ -83,7 +85,9 @@ Optional:
 -t, --ifType=[low|high]
    Type of interface. low is 32bit counter, high is 64bit counter. Defaults to trying 64 and falls back to 32.
 -i, --interval=pollinterval
-   Time in seconds between snmp polls. Defaults to $opt_interval.
+   Time in seconds between snmp polls. Defaults to 3 seconds.
+-v, --version=snmpversion
+   Manually specify the snmp version. Defaults to 2c.
 
 ";
     exit (0);
@@ -98,16 +102,23 @@ unless (($opt_interval =~ /([0-9]+)/) && ($opt_interval > 0)){print "Invalid int
 
 if ($opt_ifType) {
     $opt_ifType = lc($opt_ifType);
-    if (($opt_ifType ne "low")&&($opt_ifType ne "high")){
+    if (($opt_ifType ne 'low')&&($opt_ifType ne 'high')){
 	print "Invalid type of interface: $opt_host . Options are low or high\n";
 	exit (1)
     }
 };
 
+if ($opt_snmpver) {
+    $opt_snmpver = lc($opt_snmpver);
+    if (($opt_snmpver ne '1')&&($opt_snmpver ne '2c')){
+	print "Invalid SNMP version: $opt_host . Only 1 and 2c are supported\n";
+	exit (1)
+    }
+};
 
 #start new snmp session
 my $snmp = Net::SNMP->session(-hostname => $host,
-                              -version  => '2c',
+                              -version  => $opt_snmpver,
 			      -community => $opt_rcom);
 
 #ensure we could set up the snmp session
@@ -148,7 +159,7 @@ if ($opt_port) {
     foreach (@interfaceIds){
 	$interfaceTable->add(["$_", "$snmp_walk_ifDescr->{\"$oids{ifDescr}.$_\"}", "$snmp_walk_ifAlias->{\"$oids{ifAlias}.$_\"}"]);
     }
-    undef @interfaceIds;  # no longer need this
+    undef @interfaceIds;  # no longer need this, so undefine it
 
     print $interfaceTable->render;
     $interfaceTable->reset; #clean up the table
@@ -178,10 +189,14 @@ if ($opt_ifType) {
     #check to see if the device supports highspeed counters, if not fall back to lowspeed. 
     $snmp->get_request( -varbindlist => ["$oids{ifHCInOctets}.$requestedInterface"]);
     if ($snmp->error()){
-	print "NOTE: Device or interface does not support 64bit. Falling back to 32bit (counters may wrap)\n";
-	$interfaceType = "high";
+	if ($opt_snmpver eq '1'){
+	    print "NOTE: SNMP v1 does not support 64bit counters. Falling back to 32bit (counters may wrap)\n";
+	}else{
+	    print "NOTE: Device or interface does not support 64bit counters. Falling back to 32bit (counters may wrap)\n";
+	}
+	$interfaceType = 'low';
     }else{
-	$interfaceType = "low";
+	$interfaceType = 'high';
     }
 }
 
