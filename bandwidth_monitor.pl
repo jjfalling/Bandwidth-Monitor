@@ -162,7 +162,7 @@ else {
     checkSNMPStatus( "Error getting interface list: ", 2 );
 
     #sort list of interfaces
-    my @interfaceIds = sort { $a <=> $b } values $snmp_walk_ifindex;
+    my @interfaceIds = sort { $a <=> $b } values %$snmp_walk_ifindex;
 
     #get interface descr and aliases
     my $snmp_walk_ifDescr =
