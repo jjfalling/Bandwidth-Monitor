@@ -1,4 +1,4 @@
-!/usr/bin/env perl
+#!/usr/bin/env perl
 #****************************************************************************
 #*   SNMP Bandwidth Monitor                                                 *
 #*   Monitor bandwidth on a snmp compatible device in realtime              *
