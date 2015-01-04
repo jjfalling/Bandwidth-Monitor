@@ -81,7 +81,7 @@ Usage: $PROGNAME -H host -p port -c community -t interfaceType -i pollinterval -
 
 Required:
 -H, --hostname=HOST
-   Name or IP address of the switch/router to change the vlan on
+   Name or IP address of the switch/router to query
 
 Optional:   
 -h, --help 
