@@ -19,7 +19,7 @@
 #*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
 #****************************************************************************
 use strict;
-use warnings; 
+use warnings;
 use Getopt::Long;
 use Data::Dumper;
 
@@ -31,37 +31,45 @@ use Text::TabularDisplay;
 # User options: #
 #################
 #the default read community
-my $opt_rcom='public';
+my $opt_rcom = 'public';
 
 ########################################################################################
 my $PROGNAME = "bandwidth_monitor.pl";
-my $clear_string = `clear`; #used to clear the screen between polls
+my $clear_string = `clear`;    #used to clear the screen between polls
 
 #Define oids we are going to use:
 my %oids = (
-    'ifDescr'		=> "1.3.6.1.2.1.2.2.1.2",
-    'ifIndex'		=> "1.3.6.1.2.1.2.2.1.1",
-    'ifAlias'		=> "1.3.6.1.2.1.31.1.1.1.18",
-    'ifHCInOctets'	=> "1.3.6.1.2.1.31.1.1.1.6",
-    'ifHCOutOctets'	=> "1.3.6.1.2.1.31.1.1.1.10",
-    'ifInOctets'	=> "1.3.6.1.2.1.2.2.1.10",
-    'ifOutOctets'	=> "1.3.6.1.2.1.2.2.1.16"
-    );
+    'ifDescr'       => "1.3.6.1.2.1.2.2.1.2",
+    'ifIndex'       => "1.3.6.1.2.1.2.2.1.1",
+    'ifAlias'       => "1.3.6.1.2.1.31.1.1.1.18",
+    'ifHCInOctets'  => "1.3.6.1.2.1.31.1.1.1.6",
+    'ifHCOutOctets' => "1.3.6.1.2.1.31.1.1.1.10",
+    'ifInOctets'    => "1.3.6.1.2.1.2.2.1.10",
+    'ifOutOctets'   => "1.3.6.1.2.1.2.2.1.16"
+);
 
-my ($opt_ifType, $opt_host, $opt_port, $opt_help, $human_status, $exit_request, $human_error, $requestedInterface);
-my $opt_interval=3;
-my $opt_snmpver='2c';
+my ( $opt_ifType, $opt_host, $opt_port, $opt_help, $human_status,
+    $exit_request, $human_error, $requestedInterface );
+my $opt_interval = 3;
+my $opt_snmpver  = '2c';
 
 Getopt::Long::Configure('bundling');
-GetOptions
-    ("h"   => \$opt_help, "help" => \$opt_help,
-     "H=s" => \$opt_host, "hostname=s" => \$opt_host,
-     "p=s" => \$opt_port, "port=s" => \$opt_port,
-     "t=s" => \$opt_ifType, "iftype=s" => \$opt_ifType,
-     "i=s" => \$opt_interval, "interval=s" => \$opt_interval,
-     "v=s" => \$opt_snmpver,  "version=s" => \$opt_snmpver,
-     "c=s" => \$opt_rcom, "community=s" => \$opt_rcom);
-
+GetOptions(
+    "h"           => \$opt_help,
+    "help"        => \$opt_help,
+    "H=s"         => \$opt_host,
+    "hostname=s"  => \$opt_host,
+    "p=s"         => \$opt_port,
+    "port=s"      => \$opt_port,
+    "t=s"         => \$opt_ifType,
+    "iftype=s"    => \$opt_ifType,
+    "i=s"         => \$opt_interval,
+    "interval=s"  => \$opt_interval,
+    "v=s"         => \$opt_snmpver,
+    "version=s"   => \$opt_snmpver,
+    "c=s"         => \$opt_rcom,
+    "community=s" => \$opt_rcom
+);
 
 #validate input
 
@@ -73,7 +81,7 @@ Usage: $PROGNAME -H host -p port -c community -t interfaceType -i pollinterval -
 
 Required:
 -H, --hostname=HOST
-   Name or IP address of the switch/router to change the vlan on
+   Name or IP address of the switch/router to query
 
 Optional:   
 -h, --help 
@@ -90,79 +98,104 @@ Optional:
    Manually specify the snmp version. Defaults to 2c.
 
 ";
-    exit (0);
+    exit(0);
 }
 
 #ensure passed options are valid
-unless ($opt_host) {print "Host name/address not specified\n"; exit (1)};
-my $host = $1 if ($opt_host =~ /([-.A-Za-z0-9]+)/);
-unless ($host) {print "Invalid host: $opt_host\n"; exit (1)};
+unless ($opt_host) { print "Host name/address not specified\n"; exit(1) }
+my $host = $1 if ( $opt_host =~ /([-.A-Za-z0-9]+)/ );
+unless ($host) { print "Invalid host: $opt_host\n"; exit(1) }
 
-unless (($opt_interval =~ /([0-9]+)/) && ($opt_interval > 0)){print "Invalid interval: $opt_interval. Must be an interger >= 1\n"; exit (1)};
+unless ( ( $opt_interval =~ /([0-9]+)/ ) && ( $opt_interval > 0 ) ) {
+    print "Invalid interval: $opt_interval. Must be an interger >= 1\n";
+    exit(1);
+}
 
 if ($opt_ifType) {
     $opt_ifType = lc($opt_ifType);
-    if (($opt_ifType ne 'low')&&($opt_ifType ne 'high')){
-	print "Invalid type of interface: $opt_host . Options are low or high\n";
-	exit (1)
+    if ( ( $opt_ifType ne 'low' ) && ( $opt_ifType ne 'high' ) ) {
+        print
+          "Invalid type of interface: $opt_host . Options are low or high\n";
+        exit(1);
     }
-};
+}
 
 if ($opt_snmpver) {
     $opt_snmpver = lc($opt_snmpver);
-    if (($opt_snmpver ne '1')&&($opt_snmpver ne '2c')){
-	print "Invalid SNMP version: $opt_host . Only 1 and 2c are supported\n";
-	exit (1)
+    if ( ( $opt_snmpver ne '1' ) && ( $opt_snmpver ne '2c' ) ) {
+        print "Invalid SNMP version: $opt_host . Only 1 and 2c are supported\n";
+        exit(1);
     }
-};
+}
 
 #start new snmp session
-my $snmp = Net::SNMP->session(-hostname => $host,
-                              -version  => $opt_snmpver,
-			      -community => $opt_rcom);
+my $snmp = Net::SNMP->session(
+    -hostname  => $host,
+    -version   => $opt_snmpver,
+    -community => $opt_rcom
+);
 
 #ensure we could set up the snmp session
-checkSNMPStatus("SNMP Error: ",2);
+checkSNMPStatus( "SNMP Error: ", 2 );
 
 #if user specifies interface skip scan and ensure interface exists
 if ($opt_port) {
-    unless ($opt_port =~ /([0-9]+)/){print "Invalid port: $opt_port. Must be an interger\n"; exit (1)};
-    my $intTest = $snmp->get_request( -varbindlist => ["$oids{ifIndex}.$opt_port"]);
-    checkSNMPStatus("SNMP Error: ",2);
-    if ($intTest->{"$oids{ifIndex}.$opt_port"} eq 'noSuchInstance'){print "Requested interface $opt_port does not exist\n\n";exit 1;}
+    unless ( $opt_port =~ /([0-9]+)/ ) {
+        print "Invalid port: $opt_port. Must be an interger\n";
+        exit(1);
+    }
+    my $intTest =
+      $snmp->get_request( -varbindlist => ["$oids{ifIndex}.$opt_port"] );
+    checkSNMPStatus( "SNMP Error: ", 2 );
+    if ( $intTest->{"$oids{ifIndex}.$opt_port"} eq 'noSuchInstance' ) {
+        print "Requested interface $opt_port does not exist\n\n";
+        exit 1;
+    }
     $requestedInterface = $opt_port;
 
-}else{
+}
+else {
     #get a list of interfaces
-    my $snmp_walk_ifindex = $snmp->get_entries( -columns => [$oids{ifIndex}]);
+    my $snmp_walk_ifindex =
+      $snmp->get_entries( -columns => [ $oids{ifIndex} ] );
 
-    checkSNMPStatus("Error getting interface list: ",2);
+    checkSNMPStatus( "Error getting interface list: ", 2 );
 
     #sort list of interfaces
-    my @interfaceIds = sort {$a <=> $b} values $snmp_walk_ifindex;
+    my @interfaceIds = sort { $a <=> $b } values %$snmp_walk_ifindex;
 
     #get interface descr and aliases
-    my $snmp_walk_ifDescr = $snmp->get_entries( -columns =>  [$oids{ifDescr}]);
-    checkSNMPStatus("Error getting interface descriptions: ",2);
-    my $snmp_walk_ifAlias = $snmp->get_entries( -columns =>  [$oids{ifAlias}]);
-    if ($snmp->error()){
-	#if device does not report aliases, populate the hash
-	print "NOTE: Device does not report interface aliases\n";
-	foreach (@interfaceIds){
-	    $snmp_walk_ifAlias->{"$oids{ifAlias}.$_"} = "";
-	}
+    my $snmp_walk_ifDescr =
+      $snmp->get_entries( -columns => [ $oids{ifDescr} ] );
+    checkSNMPStatus( "Error getting interface descriptions: ", 2 );
+    my $snmp_walk_ifAlias =
+      $snmp->get_entries( -columns => [ $oids{ifAlias} ] );
+    if ( $snmp->error() ) {
+
+        #if device does not report aliases, populate the hash
+        print "NOTE: Device does not report interface aliases\n";
+        foreach (@interfaceIds) {
+            $snmp_walk_ifAlias->{"$oids{ifAlias}.$_"} = "";
+        }
     }
 
     print "\nAvailable interfaces:\n";
-    my $interfaceTable = Text::TabularDisplay->new("SNMP ID", "INTERFACE", "ALIAS");
+    my $interfaceTable =
+      Text::TabularDisplay->new( "SNMP ID", "INTERFACE", "ALIAS" );
 
-    foreach (@interfaceIds){
-	$interfaceTable->add(["$_", "$snmp_walk_ifDescr->{\"$oids{ifDescr}.$_\"}", "$snmp_walk_ifAlias->{\"$oids{ifAlias}.$_\"}"]);
+    foreach (@interfaceIds) {
+        $interfaceTable->add(
+            [
+                "$_",
+                "$snmp_walk_ifDescr->{\"$oids{ifDescr}.$_\"}",
+                "$snmp_walk_ifAlias->{\"$oids{ifAlias}.$_\"}"
+            ]
+        );
     }
-    undef @interfaceIds;  # no longer need this, so undefine it
+    undef @interfaceIds;    # no longer need this, so undefine it
 
     print $interfaceTable->render;
-    $interfaceTable->reset; #clean up the table
+    $interfaceTable->reset;    #clean up the table
 
     print "\nWhich interface do you want to monitor (SNMP ID)? ";
     $requestedInterface = <>;
@@ -170,105 +203,127 @@ if ($opt_port) {
 
     my $validInput = 0;
 
-    while ($validInput == 0) {
-	#check if input is valid
-	if (exists $snmp_walk_ifindex->{"$oids{ifIndex}.$requestedInterface"}){
-	    $validInput=1;
-	}else{
-	    print "\nInterface does not exist. Which interface do you want to monitor (SNMP ID)? ";
-	    $requestedInterface = <>;
-	    chomp($requestedInterface);
-	}
+    while ( $validInput == 0 ) {
+
+        #check if input is valid
+        if ( exists $snmp_walk_ifindex->{"$oids{ifIndex}.$requestedInterface"} )
+        {
+            $validInput = 1;
+        }
+        else {
+            print
+"\nInterface does not exist. Which interface do you want to monitor (SNMP ID)? ";
+            $requestedInterface = <>;
+            chomp($requestedInterface);
+        }
     }
 }
 
 my $interfaceType = "";
 if ($opt_ifType) {
     $interfaceType = $opt_ifType;
-}else{
-    #check to see if the device supports highspeed counters, if not fall back to lowspeed. 
-    $snmp->get_request( -varbindlist => ["$oids{ifHCInOctets}.$requestedInterface"]);
-    if ($snmp->error()){
-	if ($opt_snmpver eq '1'){
-	    print "NOTE: SNMP v1 does not support 64bit counters. Falling back to 32bit (counters may wrap)\n";
-	}else{
-	    print "NOTE: Device or interface does not support 64bit counters. Falling back to 32bit (counters may wrap)\n";
-	}
-	$interfaceType = 'low';
-    }else{
-	$interfaceType = 'high';
+}
+else {
+#check to see if the device supports highspeed counters, if not fall back to lowspeed.
+    $snmp->get_request(
+        -varbindlist => ["$oids{ifHCInOctets}.$requestedInterface"] );
+    if ( $snmp->error() ) {
+        if ( $opt_snmpver eq '1' ) {
+            print
+"NOTE: SNMP v1 does not support 64bit counters. Falling back to 32bit (counters may wrap)\n";
+        }
+        else {
+            print
+"NOTE: Device or interface does not support 64bit counters. Falling back to 32bit (counters may wrap)\n";
+        }
+        $interfaceType = 'low';
+    }
+    else {
+        $interfaceType = 'high';
     }
 }
 
 #get init state
-my ($inOct1, $outOct1);
-if ("$interfaceType" eq "high"){
-    $inOct1 = $snmp->get_request( -varbindlist => ["$oids{ifHCInOctets}.$requestedInterface"]);
-    checkSNMPStatus("Error getting interface traffic counter: ",2);
-    $inOct1 = $inOct1->{"$oids{ifHCInOctets}.$requestedInterface"};	
+my ( $inOct1, $outOct1 );
+if ( "$interfaceType" eq "high" ) {
+    $inOct1 = $snmp->get_request(
+        -varbindlist => ["$oids{ifHCInOctets}.$requestedInterface"] );
+    checkSNMPStatus( "Error getting interface traffic counter: ", 2 );
+    $inOct1 = $inOct1->{"$oids{ifHCInOctets}.$requestedInterface"};
 
-    $outOct1 = $snmp->get_request( -varbindlist => ["$oids{ifHCOutOctets}.$requestedInterface"]);
-    checkSNMPStatus("Error getting interface traffic counter: ",2);
-    $outOct1 = $outOct1->{"$oids{ifHCOutOctets}.$requestedInterface"};	
+    $outOct1 = $snmp->get_request(
+        -varbindlist => ["$oids{ifHCOutOctets}.$requestedInterface"] );
+    checkSNMPStatus( "Error getting interface traffic counter: ", 2 );
+    $outOct1 = $outOct1->{"$oids{ifHCOutOctets}.$requestedInterface"};
 
-}else{
-    $inOct1 = $snmp->get_request( -varbindlist => ["$oids{ifInOctets}.$requestedInterface"]);
-    checkSNMPStatus("Error getting interface traffic counter: ",2);
+}
+else {
+    $inOct1 = $snmp->get_request(
+        -varbindlist => ["$oids{ifInOctets}.$requestedInterface"] );
+    checkSNMPStatus( "Error getting interface traffic counter: ", 2 );
     $inOct1 = $inOct1->{"$oids{ifInOctets}.$requestedInterface"};
 
-    $outOct1 = $snmp->get_request( -varbindlist => ["$oids{ifOutOctets}.$requestedInterface"]);
-    checkSNMPStatus("Error getting interface traffic counter: ",2);
+    $outOct1 = $snmp->get_request(
+        -varbindlist => ["$oids{ifOutOctets}.$requestedInterface"] );
+    checkSNMPStatus( "Error getting interface traffic counter: ", 2 );
     $outOct1 = $outOct1->{"$oids{ifOutOctets}.$requestedInterface"};
 }
 
-my $trafficData = Text::TabularDisplay->new("Time", "Octets In", "Octects Out", "KB/s In", "KB/s Out");
+my $trafficData =
+  Text::TabularDisplay->new( "Time", "Octets In", "Octects Out", "KB/s In",
+    "KB/s Out" );
 
 sleep $opt_interval;
 
-
-
 while (1) {
 
-    my ($inOct2, $outOct2, $inUsage, $outUsage);
-    if ("$interfaceType" eq "high"){
-	$inOct2 = $snmp->get_request( -varbindlist => ["$oids{ifHCInOctets}.$requestedInterface"]);
-	checkSNMPStatus("Error getting interface traffic counter: ");
-	$inOct2 = $inOct2->{"$oids{ifHCInOctets}.$requestedInterface"};	
+    my ( $inOct2, $outOct2, $inUsage, $outUsage );
+    if ( "$interfaceType" eq "high" ) {
+        $inOct2 = $snmp->get_request(
+            -varbindlist => ["$oids{ifHCInOctets}.$requestedInterface"] );
+        checkSNMPStatus("Error getting interface traffic counter: ");
+        $inOct2 = $inOct2->{"$oids{ifHCInOctets}.$requestedInterface"};
 
-	$outOct2 = $snmp->get_request( -varbindlist => ["$oids{ifHCOutOctets}.$requestedInterface"]);
-	checkSNMPStatus("Error getting interface traffic counter: ");
-	$outOct2 = $outOct2->{"$oids{ifHCOutOctets}.$requestedInterface"};	
+        $outOct2 = $snmp->get_request(
+            -varbindlist => ["$oids{ifHCOutOctets}.$requestedInterface"] );
+        checkSNMPStatus("Error getting interface traffic counter: ");
+        $outOct2 = $outOct2->{"$oids{ifHCOutOctets}.$requestedInterface"};
 
-    }else{
-	$inOct2 = $snmp->get_request( -varbindlist => ["$oids{ifInOctets}.$requestedInterface"]);
-	checkSNMPStatus("Error getting interface traffic counter: ");
-	$inOct2 = $inOct2->{"$oids{ifInOctets}.$requestedInterface"};
+    }
+    else {
+        $inOct2 = $snmp->get_request(
+            -varbindlist => ["$oids{ifInOctets}.$requestedInterface"] );
+        checkSNMPStatus("Error getting interface traffic counter: ");
+        $inOct2 = $inOct2->{"$oids{ifInOctets}.$requestedInterface"};
 
-	$outOct2 = $snmp->get_request( -varbindlist => ["$oids{ifOutOctets}.$requestedInterface"]);
-	checkSNMPStatus("Error getting interface traffic counter: ");
-	$outOct2 = $outOct2->{"$oids{ifOutOctets}.$requestedInterface"};
+        $outOct2 = $snmp->get_request(
+            -varbindlist => ["$oids{ifOutOctets}.$requestedInterface"] );
+        checkSNMPStatus("Error getting interface traffic counter: ");
+        $outOct2 = $outOct2->{"$oids{ifOutOctets}.$requestedInterface"};
     }
 
-    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+    my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) =
+      localtime();
 
     #diff the polls, divided by the interval
-    $inUsage = ($inOct2 - $inOct1) / $opt_interval;
-    $outUsage = ($outOct2 - $outOct1) / $opt_interval;
+    $inUsage  = ( $inOct2 - $inOct1 ) / $opt_interval;
+    $outUsage = ( $outOct2 - $outOct1 ) / $opt_interval;
 
     #convert from bits to kb
-    $inUsage = $inUsage * 8 / 1024;
+    $inUsage  = $inUsage * 8 / 1024;
     $outUsage = $outUsage * 8 / 1024;
 
-    $inUsage = sprintf("%.3f", $inUsage);
-    $outUsage = sprintf("%.3f", $outUsage);
+    $inUsage  = sprintf( "%.3f", $inUsage );
+    $outUsage = sprintf( "%.3f", $outUsage );
 
-    $trafficData->add(["$hour:$min:$sec","$inOct2","$outOct2","$inUsage","$outUsage"]);
+    $trafficData->add(
+        [ "$hour:$min:$sec", "$inOct2", "$outOct2", "$inUsage", "$outUsage" ] );
     print $clear_string;
     print $trafficData->render;
     print "\n";
 
     #store old values
-    $inOct1= $inOct2;
+    $inOct1  = $inOct2;
     $outOct1 = $outOct2;
 
     sleep $opt_interval;
@@ -280,22 +335,24 @@ while (1) {
 
 #This function will do the error checking and reporting when related to SNMP
 sub checkSNMPStatus {
-    $human_error = $_[0];
+    $human_error  = $_[0];
     $exit_request = $_[1];
-    
+
     my $snmp_error = $snmp->error;
-    #check if there was an error, if so, print the requested message and the snmp error. I used the color red to get the user's attention.
+
+#check if there was an error, if so, print the requested message and the snmp error. I used the color red to get the user's attention.
     if ($snmp_error) {
-	print "$human_error $snmp_error \n";
-	#check to see if the error should cause the script to exit, if so, exit with the requested code
-	if ($exit_request) {
-	    print "\n";
-	    exit $exit_request;
-	}else{
-	    return 1;
-	}
+        print "$human_error $snmp_error \n";
+
+#check to see if the error should cause the script to exit, if so, exit with the requested code
+        if ($exit_request) {
+            print "\n";
+            exit $exit_request;
+        }
+        else {
+            return 1;
+        }
     }
     return 0;
 }
-
 
