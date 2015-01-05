@@ -37,7 +37,7 @@ my $opt_rcom = 'public';
 my $PROGNAME     = "bandwidth_monitor.pl";
 my $clear_string = `clear`;                  #used to clear the screen between polls
 
-#Define oids we are going to use:
+#Define oids we are going to use. This is done incase the mibs are not available.
 my %oids = (
     'ifDescr'       => "1.3.6.1.2.1.2.2.1.2",
     'ifIndex'       => "1.3.6.1.2.1.2.2.1.1",
@@ -49,8 +49,8 @@ my %oids = (
 );
 
 my ( $opt_ifType, $opt_host, $opt_port, $opt_help, $human_status, $exit_request, $human_error, $requestedInterface );
-my $opt_interval = 3;
-my $opt_snmpver  = '2c';
+my $opt_interval = 3;       #Default poll interval of 3 seconds
+my $opt_snmpver  = '2c';    #Default to snmpv2c
 
 Getopt::Long::Configure('bundling');
 GetOptions(
@@ -63,7 +63,7 @@ GetOptions(
     "c|community=s" => \$opt_rcom
 );
 
-#validate input
+#Help message
 
 if ($opt_help) {
 
@@ -75,13 +75,13 @@ Required:
 -H, --hostname=HOST
    Name or IP address of the target host
 
-Optional:   
+Optional:
 -h, --help 
-   Print this message   
--p, --port=portid 
-   SNMP ID of the port. Skips scanning the device.   
+   Print this message and exit.
+-p, --port=portid
+   SNMP ID of the port or interface. Skips scanning the device.
 -c, --community=readcommunity
-   SNMP read community. Defaults to public
+   SNMP read community. Defaults to public.
 -t, --ifType=[low|high]
    Type of interface. low is 32bit counter, high is 64bit counter. Defaults to trying 64 and falls back to 32.
 -i, --interval=pollinterval
@@ -93,13 +93,15 @@ Optional:
     exit(0);
 }
 
-#ensure passed options are valid
+#Ensure valid hostname
 unless ($opt_host) { print "Host name/address not specified\n"; exit(1) }
 my $host = $1 if ( $opt_host =~ /([-.A-Za-z0-9]+)/ );
 unless ($host) { print "Invalid host: $opt_host\n"; exit(1) }
 
+#Ensure interval is an interger greater then 1
 unless ( ( $opt_interval =~ /([0-9]+)/ ) && ( $opt_interval > 0 ) ) { print "Invalid interval: $opt_interval. Must be an interger >= 1\n"; exit(1) }
 
+#Ensure iftype is high or low and lc it
 if ($opt_ifType) {
     $opt_ifType = lc($opt_ifType);
     if ( ( $opt_ifType ne 'low' ) && ( $opt_ifType ne 'high' ) ) {
@@ -108,6 +110,7 @@ if ($opt_ifType) {
     }
 }
 
+#Ensure snmpversion is either 2c or 1.
 if ($opt_snmpver) {
     $opt_snmpver = lc($opt_snmpver);
     if ( ( $opt_snmpver ne '1' ) && ( $opt_snmpver ne '2c' ) ) {
@@ -123,10 +126,10 @@ my $snmp = Net::SNMP->session(
     -community => $opt_rcom
 );
 
-#ensure we could set up the snmp session
+#Ensure we could set up the snmp session, this can fail for many reasons
 checkSNMPStatus( "SNMP Error: ", 2 );
 
-#if user specifies interface skip scan and ensure interface exists
+#If user specifies interface skip walking the device and ensure interface exists
 if ($opt_port) {
     unless ( $opt_port =~ /([0-9]+)/ ) { print "Invalid port: $opt_port. Must be an interger\n"; exit(1) }
     my $intTest = $snmp->get_request( -varbindlist => ["$oids{ifIndex}.$opt_port"] );
@@ -135,38 +138,42 @@ if ($opt_port) {
     $requestedInterface = $opt_port;
 
 }
+
+#User did not specify the interface
 else {
-    #get a list of interfaces
+    #Get a list of interfaces by walking ifindex
     my $snmp_walk_ifindex = $snmp->get_entries( -columns => [ $oids{ifIndex} ] );
 
     checkSNMPStatus( "Error getting interface list: ", 2 );
 
-    #sort list of interfaces
+    #Sort list of interfaces for later
     my @interfaceIds = sort { $a <=> $b } values %$snmp_walk_ifindex;
 
-    #get interface descr and aliases
+    #Get interface descr and aliases
     my $snmp_walk_ifDescr = $snmp->get_entries( -columns => [ $oids{ifDescr} ] );
     checkSNMPStatus( "Error getting interface descriptions: ", 2 );
     my $snmp_walk_ifAlias = $snmp->get_entries( -columns => [ $oids{ifAlias} ] );
     if ( $snmp->error() ) {
 
-        #if device does not report aliases, populate the hash
+        #If device does not report aliases, populate the hash to prevent errors
         print "NOTE: Device does not report interface aliases\n";
         foreach (@interfaceIds) {
             $snmp_walk_ifAlias->{"$oids{ifAlias}.$_"} = "";
         }
     }
 
+    #Start generating the table
     print "\nAvailable interfaces:\n";
     my $interfaceTable = Text::TabularDisplay->new( "SNMP ID", "INTERFACE", "ALIAS" );
 
+    #Go through each interface in order and add a row to the table with its data
     foreach (@interfaceIds) {
         $interfaceTable->add( [ "$_", "$snmp_walk_ifDescr->{\"$oids{ifDescr}.$_\"}", "$snmp_walk_ifAlias->{\"$oids{ifAlias}.$_\"}" ] );
     }
-    undef @interfaceIds;    # no longer need this, so undefine it
+    undef @interfaceIds;    #No longer need this, so undefine it
 
     print $interfaceTable->render;
-    $interfaceTable->reset;    #clean up the table
+    $interfaceTable->reset;    #Clean up the table
 
     print "\nWhich interface do you want to monitor (SNMP ID)? ";
     $requestedInterface = <>;
@@ -174,9 +181,10 @@ else {
 
     my $validInput = 0;
 
+    #Validate user input and keep promting till something valid is entered.
     while ( $validInput == 0 ) {
 
-        #check if input is valid
+        #See if interface is in the ifindex
         if ( exists $snmp_walk_ifindex->{"$oids{ifIndex}.$requestedInterface"} ) {
             $validInput = 1;
         }
@@ -189,11 +197,21 @@ else {
 }
 
 my $interfaceType = "";
+
+#If the interface type was specified then skip checking which the device supports
 if ($opt_ifType) {
+
+    #Show error and exit if trying to use 64bit counters with snmp v1
+    if ( ( $opt_snmpver eq '1' ) && ( $opt_ifType eq 'high' ) ) {
+        print "ERROR: You cannot use 64bit counters with SNMPv1!\n\n";
+        exit 2;
+    }
+
     $interfaceType = $opt_ifType;
+
 }
 else {
-    #check to see if the device supports highspeed counters, if not fall back to lowspeed.
+    #Check to see if the device supports highspeed counters, if not fall back to lowspeed.
     $snmp->get_request( -varbindlist => ["$oids{ifHCInOctets}.$requestedInterface"] );
     if ( $snmp->error() ) {
         if ( $opt_snmpver eq '1' ) {
@@ -209,7 +227,10 @@ else {
     }
 }
 
-#get init state
+#Give notice to use to wait for interval time
+print "\nPlease wait for $opt_interval seconds... Press ctrl+c at any time to exit $PROGNAME.\n";
+
+#Init traffic data
 my ( $inOct1, $outOct1 );
 if ( "$interfaceType" eq "high" ) {
     $inOct1 = $snmp->get_request( -varbindlist => ["$oids{ifHCInOctets}.$requestedInterface"] );
@@ -231,13 +252,18 @@ else {
     $outOct1 = $outOct1->{"$oids{ifOutOctets}.$requestedInterface"};
 }
 
+#Make a new table for the traffic data
 my $trafficData = Text::TabularDisplay->new( "Time", "Octets In", "Octects Out", "KB/s In", "KB/s Out" );
 
+#Sleep for the requested interval to get the proper diff
 sleep $opt_interval;
 
+#Keep polling data and printing new table till user exits
 while (1) {
 
     my ( $inOct2, $outOct2, $inUsage, $outUsage );
+
+    #Get data depending on interface type
     if ( "$interfaceType" eq "high" ) {
         $inOct2 = $snmp->get_request( -varbindlist => ["$oids{ifHCInOctets}.$requestedInterface"] );
         checkSNMPStatus("Error getting interface traffic counter: ");
@@ -258,25 +284,30 @@ while (1) {
         $outOct2 = $outOct2->{"$oids{ifOutOctets}.$requestedInterface"};
     }
 
+    #Get time data for timestamp
     my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) = localtime();
 
-    #diff the polls, divided by the interval
+    #Diff the polls, divided by the interval
     $inUsage  = ( $inOct2 - $inOct1 ) / $opt_interval;
     $outUsage = ( $outOct2 - $outOct1 ) / $opt_interval;
 
-    #convert from bits to kb
+    #Donvert from bits to kb
     $inUsage  = $inUsage * 8 / 1024;
     $outUsage = $outUsage * 8 / 1024;
 
+    #Limit float percision
     $inUsage  = sprintf( "%.3f", $inUsage );
     $outUsage = sprintf( "%.3f", $outUsage );
 
+    #Add new row to table
     $trafficData->add( [ "$hour:$min:$sec", "$inOct2", "$outOct2", "$inUsage", "$outUsage" ] );
+
+    #Clear the screen and reprint the table
     print $clear_string;
     print $trafficData->render;
     print "\n";
 
-    #store old values
+    #Dtore old values
     $inOct1  = $inOct2;
     $outOct1 = $outOct2;
 
