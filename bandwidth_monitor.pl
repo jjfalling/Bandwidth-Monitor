@@ -98,8 +98,8 @@ unless ($opt_host) { print "Host name/address not specified\n"; exit(1) }
 my $host = $1 if ( $opt_host =~ /([-.A-Za-z0-9]+)/ );
 unless ($host) { print "Invalid host: $opt_host\n"; exit(1) }
 
-#Ensure interval is an interger greater then 1
-unless ( ( $opt_interval =~ /([0-9]+)/ ) && ( $opt_interval > 0 ) ) { print "Invalid interval: $opt_interval. Must be an interger >= 1\n"; exit(1) }
+#Ensure interval is an integer greater then 1
+unless ( ( $opt_interval =~ /([0-9]+)/ ) && ( $opt_interval > 0 ) ) { print "Invalid interval: $opt_interval. Must be an integer >= 1\n"; exit(1) }
 
 #Ensure iftype is high or low and lc it
 if ($opt_ifType) {
@@ -131,7 +131,7 @@ checkSNMPStatus( "SNMP Error: ", 2 );
 
 #If user specifies interface skip walking the device and ensure interface exists
 if ($opt_port) {
-    unless ( $opt_port =~ /([0-9]+)/ ) { print "Invalid port: $opt_port. Must be an interger\n"; exit(1) }
+    unless ( $opt_port =~ /([0-9]+)/ ) { print "Invalid port: $opt_port. Must be an integer\n"; exit(1) }
     my $intTest = $snmp->get_request( -varbindlist => ["$oids{ifIndex}.$opt_port"] );
     checkSNMPStatus( "SNMP Error: ", 2 );
     if ( $intTest->{"$oids{ifIndex}.$opt_port"} eq 'noSuchInstance' ) { print "Requested interface $opt_port does not exist\n\n"; exit 1; }
