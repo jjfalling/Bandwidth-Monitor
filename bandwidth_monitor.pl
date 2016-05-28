@@ -48,7 +48,7 @@ my %oids = (
     'ifOutOctets'   => "1.3.6.1.2.1.2.2.1.16"
 );
 
-my ( $opt_ifType, $opt_host, $opt_port, $opt_help, $human_status, $exit_request, $human_error, $requestedInterface );
+my ( $opt_ifType, $opt_host, $opt_port, $opt_help, $human_status, $exit_request, $human_error, $requestedInterface, $opt_mb );
 my $opt_interval = 3;       #Default poll interval of 3 seconds
 my $opt_snmpver  = '2c';    #Default to snmpv2c
 
@@ -60,7 +60,9 @@ GetOptions(
     "t|iftype=s"    => \$opt_ifType,
     "i|interval=s"  => \$opt_interval,
     "v|version=s"   => \$opt_snmpver,
-    "c|community=s" => \$opt_rcom
+    "c|community=s" => \$opt_rcom,
+    "m|mb"          => \$opt_mb
+
 );
 
 #Help message
@@ -68,7 +70,7 @@ GetOptions(
 if ($opt_help) {
 
     print "
-SNMP Bandwidth Monitor 
+SNMP Bandwidth Monitor
 Usage: $PROGNAME -H host -p port -c community -t interfaceType -i pollinterval -v snmpversion
 
 Required:
@@ -76,7 +78,7 @@ Required:
    Name or IP address of the target host
 
 Optional:
--h, --help 
+-h, --help
    Print this message and exit.
 -p, --port=portid
    SNMP ID of the port or interface. Skips scanning the device.
@@ -88,6 +90,8 @@ Optional:
    Time in seconds between snmp polls. Defaults to 3 seconds.
 -v, --version=snmpversion
    Manually specify the snmp version. Defaults to 2c.
+-m, --mb
+   Display MB/s instead of KB/s
 
 ";
     exit(0);
@@ -253,7 +257,13 @@ else {
 }
 
 #Make a new table for the traffic data
-my $trafficData = Text::TabularDisplay->new( "Time", "Octets In", "Octects Out", "KB/s In", "KB/s Out" );
+my $trafficData;
+if ($opt_mb) {
+    $trafficData = Text::TabularDisplay->new( "Time", "Octets In", "Octects Out", "MB/s In", "MB/s Out" );
+}
+else {
+    $trafficData = Text::TabularDisplay->new( "Time", "Octets In", "Octects Out", "KB/s In", "KB/s Out" );
+}
 
 #Sleep for the requested interval to get the proper diff
 sleep $opt_interval;
@@ -294,6 +304,13 @@ while (1) {
     #Donvert from bits to kb
     $inUsage  = $inUsage * 8 / 1024;
     $outUsage = $outUsage * 8 / 1024;
+
+    if ($opt_mb) {
+
+        #mb was requestd, convert
+        $inUsage  = $inUsage / 1024;
+        $outUsage = $outUsage / 1024;
+    }
 
     #Limit float percision
     $inUsage  = sprintf( "%.3f", $inUsage );
@@ -340,4 +357,3 @@ sub checkSNMPStatus {
     }
     return 0;
 }
-
