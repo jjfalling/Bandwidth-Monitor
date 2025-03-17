@@ -1,3 +1,0 @@
-#use with cpanm, such as 'cpanm < dependencies.txt' 
-Net::SNMP~0
-Text::TabularDisplay~0
